@@ -14,6 +14,9 @@ PYDANTIC_TYPES = {
 
 
 DATE_FORMATS = (
+    "M/d/yyyy",
+    "M/dd/yyyy",
+    "MM/d/yyyy",
     "MM/dd/yyyy",
     "dd/MM/yyyy",
     "MM-dd-yyyy",
