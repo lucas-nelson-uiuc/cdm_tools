@@ -8,7 +8,7 @@ PYDANTIC_TYPES = {
     str: types.StringType(),
     int: types.IntegerType(),
     datetime.date: types.DateType(),
-    datetime: types.TimestampType(),
+    datetime.datetime: types.TimestampType(),
     decimal.Decimal: types.DecimalType(38, 6),
 }
 
