@@ -1,3 +1,3 @@
-from journal_entry_testing import GeneralLedgerDetail, TrialBalance, ChartOfAccounts
+from .journal_entry_testing import GeneralLedgerDetail, TrialBalance, ChartOfAccounts
 
 __all__ = [GeneralLedgerDetail, TrialBalance, ChartOfAccounts]
