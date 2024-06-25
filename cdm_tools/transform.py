@@ -2,7 +2,7 @@ import functools
 
 from pyspark.sql import types, functions as F
 
-from cdm_tools.types import PYDANTIC_TYPES
+from .types import PYDANTIC_TYPES
 
 
 def cdm_transform(model):

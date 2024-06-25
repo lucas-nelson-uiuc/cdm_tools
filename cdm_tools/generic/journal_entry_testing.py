@@ -1,5 +1,5 @@
 from pydantic import Field
-from cdm_tools.models import CommonDataModel
+from ..models import CommonDataModel
 
 import decimal
 import datetime
