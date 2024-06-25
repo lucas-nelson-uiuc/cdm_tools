@@ -10,7 +10,11 @@ def cdm_transform(model):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             data = func(*args, **kwargs)
-            for field, field_info in model.get_request_form().items():
+            request_form = model.get_request_form().items()
+            data = data.select(
+                *[field_info.get("name") for _, field_info in request_form]
+            )
+            for field, field_info in request_form:
                 field_name = field_info.get("name")
                 field_type = PYDANTIC_TYPES.get(
                     field_info.get("dtype"), types.NullType()
