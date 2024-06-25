@@ -1,6 +1,6 @@
 import functools
 
-from pyspark import types, functions as F
+from pyspark.sql import types, functions as F
 
 from cdm_tools.types import PYDANTIC_TYPES
 
