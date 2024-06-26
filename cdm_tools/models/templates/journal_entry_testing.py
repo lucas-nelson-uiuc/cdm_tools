@@ -1,5 +1,5 @@
 from pydantic import Field
-from ..models import CommonDataModel
+from ..common import CommonDataModel
 
 import decimal
 import datetime
@@ -17,6 +17,8 @@ class TrialBalance(CommonDataModel):
     entity_id: str
     account_number: str
     account_description: str
+    period_end_date: datetime.date
+    balance: decimal.Decimal
 
 
 class ChartOfAccounts(CommonDataModel):
