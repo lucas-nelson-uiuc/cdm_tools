@@ -10,16 +10,21 @@ def cdm_transform(model):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             data = func(*args, **kwargs)
-            request_form = model.get_request_form().items()
-            data = data.select(
-                *[field_info.get("name") for _, field_info in request_form]
-            )
-            for field, field_info in request_form:
-                field_name = field_info.get("name")
-                field_type = PYDANTIC_TYPES.get(
-                    field_info.get("dtype"), types.NullType()
-                )
-                data = data.withColumnRenamed(field_name, field)
+            all_transformations = dict()
+            for field, field_info in model.model_fields.items():
+                # rename column to specified name
+                all_transformations[field] = dict()
+                field_name = field_info.alias or field
+                if field_name != field:
+                    all_transformations[field]["rename"] = f"{field_name} to {field}"
+                    data = data.withColumnRenamed(field_name, field)
+
+                # cast to specified data type; attempt multiple formats for dates, timestamps
+                field_type = PYDANTIC_TYPES.get(field_info.annotation, types.NullType())
+                if field_type != types.StringType():
+                    all_transformations[field]["cast"] = (
+                        f"{field} as {field_type.__class__.__name__}"
+                    )
                 if field_type == types.DateType():
                     formatted_dates = [
                         F.to_date(F.col(field), fmt) for fmt in DATE_FORMATS
@@ -32,6 +37,20 @@ def cdm_transform(model):
                     data = data.withColumn(field, F.coalesce(*formatted_timestamps))
                 else:
                     data = data.withColumn(field, F.col(field).cast(field_type))
+
+                # mutate field according to default value, if provided
+                if field_info.default_factory:
+                    data = data.withColumn(field, field_info.default_factory("x"))
+                    all_transformations[field]["mutate"] = (
+                        "default assigned as <operation-here>"
+                    )
+
+            for field, transformation in all_transformations.items():
+                if transformation:
+                    print(f">>> Transformed {field}")
+                    for operation, message in transformation.items():
+                        print(f"\t[{operation.title()}] {message}")
+
             return data
 
         return wrapper

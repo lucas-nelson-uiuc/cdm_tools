@@ -7,9 +7,7 @@ from pyspark.sql import functions as F
 
 
 def normalize_data(
-    data: pyspark.sql.DataFrame,
-    repl: str = "_",
-    str_case: str = "lower"
+    data: pyspark.sql.DataFrame, repl: str = "_", str_case: str = "lower"
 ) -> pyspark.sql.DataFrame:
     def normalize_column_values(data: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
         return data.withColumns(
@@ -37,7 +35,10 @@ def normalize_data(
 
         RE_INVALID_CHARACTERS = f"[\s{string.punctuation}]+"
         normalization_rules = (
-            {"pattern": f"(^{RE_INVALID_CHARACTERS}|{RE_INVALID_CHARACTERS}$)", "repl": ""},
+            {
+                "pattern": f"(^{RE_INVALID_CHARACTERS}|{RE_INVALID_CHARACTERS}$)",
+                "repl": "",
+            },
             {"pattern": f"{RE_INVALID_CHARACTERS}", "repl": repl},
         )
         columns = map(getattr(str, str_case), data.columns)
