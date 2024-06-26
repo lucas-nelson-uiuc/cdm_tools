@@ -52,7 +52,7 @@ def cdm_transform(model):
                     for operation, message in transformation.items():
                         print(f"\t[{operation.title()}] {message}")
 
-            return data
+            return data.select(*[field for field in model.model_fields.keys()])
 
         return wrapper
 
