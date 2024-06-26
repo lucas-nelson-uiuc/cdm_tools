@@ -7,7 +7,7 @@ import datetime
 
 class GeneralLedgerDetail(CommonDataModel):
     entity_id: str
-    fiscal_period: int = Field(ge=1, le=12)
+    fiscal_period: int
     date_effective: datetime.date
     date_posted: datetime.date
     net_amount_ec: decimal.Decimal

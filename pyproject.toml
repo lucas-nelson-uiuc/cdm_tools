@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.10"
 pydantic = "2.7"
 pyspark = "3.3.2"
+attrs = "^23.2.0"
+loguru = "^0.7.2"
 
 
 [build-system]
