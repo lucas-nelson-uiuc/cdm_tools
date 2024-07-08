@@ -17,11 +17,15 @@ def cdm_transform(model):
                 field_name = field_info.alias or field
                 if field_name in data.columns:
                     if field_name != field:
-                        all_transformations[field]["rename"] = f"{field_name} to {field}"
-                        data = data.withColumnRenamed(field_name, field)
+                        all_transformations[field]["rename"] = (
+                            f"{field_name} to {field}"
+                        )
+                        data = data.withColumn(field, F.col(field_name))
 
                     # cast to specified data type; attempt multiple formats for dates, timestamps
-                    field_type = PYDANTIC_TYPES.get(field_info.annotation, types.NullType())
+                    field_type = PYDANTIC_TYPES.get(
+                        field_info.annotation, types.NullType()
+                    )
                     if field_type != types.StringType():
                         all_transformations[field]["cast"] = (
                             f"{field} as {field_type.__class__.__name__}"
@@ -33,11 +37,17 @@ def cdm_transform(model):
                         data = data.withColumn(field, F.coalesce(*formatted_dates))
                     elif field_type == types.TimestampType():
                         formatted_timestamps = [
-                            F.to_timestamp(F.col(field), fmt) for fmt in TIMESTAMP_FORMATS
+                            F.to_timestamp(F.col(field), fmt)
+                            for fmt in TIMESTAMP_FORMATS
                         ]
                         data = data.withColumn(field, F.coalesce(*formatted_timestamps))
                     else:
                         data = data.withColumn(field, F.col(field).cast(field_type))
+
+                if field_name not in data.columns:
+                    data = data.withColumn(
+                        field_name, F.lit(None).cast(types.StringType())
+                    )
 
                 # mutate field according to default value, if provided
                 if field_info.default_factory:
