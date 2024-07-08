@@ -6,7 +6,7 @@ from loguru import logger
 def tidyworkflow(
     message: str = "Performing the following steps",
     validators: list[Callable] = None,
-    section: str = None
+    section: str = None,
 ):
     """
 
@@ -47,7 +47,9 @@ def tidyworkflow(
             ### store, test local variables from function
             _locals = func(*args, **kwargs)
             if not isinstance(_locals, dict):
-                raise ValueError(f"{func.__name__} must return `locals()`, a dictionary")
+                raise ValueError(
+                    f"{func.__name__} must return `locals()`, a dictionary"
+                )
 
             ### separate local variables into appropriate groups
             _locals, _kwargs, _callables = bucket_local_vars(_locals=_locals)
@@ -61,8 +63,8 @@ def tidyworkflow(
                     doc_string = f"Skipping {_c.__name__}"
                     log_func = logger.warning
                 log_func(f"#>\t({str(i+1).rjust(2, '0')}) {doc_string}")
-                
-                section = kwargs.get('section')
+
+                section = kwargs.get("section")
                 if not section in tidyworkflow.context:
                     tidyworkflow.context[section] = list()
                 tidyworkflow.context[section].append(_c.__doc__)
@@ -83,11 +85,12 @@ def tidyworkflow(
 
 def tidyignore(func):
     """Decorator for ignoring functions in execution stack"""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # TODO: pass (return None)
         return func(*args, **kwargs)
-    
+
     # set attribute that can be checked, handled in tidyworkflow_memo
     wrapper._twf_ignore = True
     return wrapper

@@ -41,12 +41,12 @@ def cdm_validate(model):
                     validation_count = data.filter(~operation).count()
                     if validation_count > 0:
                         print(
-                            f"\t[FAILURE] validation for {operation_name} flagged {validation_count:,} observations"
+                            f"\t[FAILURE] `{operation_name}` validation flagged {validation_count:,} observations"
                         )
                         print(f"\t[>] Run code for sample: {operation}")
                     else:
                         print(
-                            f"\t[SUCCESS] validation for {operation_name} flagged no observations"
+                            f"\t[SUCCESS] `{operation_name}` validation flagged flagged no observations"
                         )
             return data
 

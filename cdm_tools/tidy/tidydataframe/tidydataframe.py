@@ -6,8 +6,11 @@ from typing import Union
 
 from attrs import define, field, validators
 from loguru import logger
-logger.remove() # remove default loguru logger
-logger.add(sink=sys.stderr, format="{time:HH:mm:ss} | {message}") # replace with customized logger
+
+logger.remove()  # remove default loguru logger
+logger.add(
+    sink=sys.stderr, format="{time:HH:mm:ss} | {message}"
+)  # replace with customized logger
 
 import pyspark
 import pyspark.sql.functions as F
@@ -17,7 +20,7 @@ import pyspark.sql.functions as F
 class TidyDataFrame:
     """
     Decorator class enhancing data workflows with in-process logging messages.
-    
+
     The TidyDataFrame extends the native pyspark.sql.DataFrame (DataFrame) by
     giving users immediate feedback as their code executes. Depending on the
     nature of a command, users can observe how a method alters their DataFrame's
@@ -27,6 +30,7 @@ class TidyDataFrame:
     changes to any existing code. Once wrapped around a DataFrame, it can "toggle"
     many common options, such as counting, displaying, timing, messaging, and so on.
     """
+
     _data: pyspark.sql.DataFrame = field(
         validator=validators.instance_of(pyspark.sql.DataFrame)
     )
@@ -44,7 +48,9 @@ class TidyDataFrame:
             else self._unknown_dimension
         )
         self._n_cols = len(self._data.columns)
-        self._log_operation(">> enter >>", self.__repr__(data_type=type(self).__name__), level='success')
+        self._log_operation(
+            ">> enter >>", self.__repr__(data_type=type(self).__name__), level="success"
+        )
 
     def __repr__(self, data_type: str):
         """String representation of TidyDataFrame"""
@@ -66,7 +72,7 @@ class TidyDataFrame:
 
     def _log_operation(self, operation, message, level="info"):
         """Method for logging operations to console.
-        
+
         Note
         ====
         Used to return None, but now returns self so that users can
@@ -82,18 +88,19 @@ class TidyDataFrame:
         )
 
         #> Removing null values from ID column
-        #> filter: contains N rows, removed X rows, returned N-X rows 
+        #> filter: contains N rows, removed X rows, returned N-X rows
         """
         getattr(logger, level)(f"#> {operation}: {message}")
         return self
 
     def _tdf_controller(message: str, alias: str = None):
         """Orchestrator for decorated DataFrame methods.
-        
+
         This function packages common operations such that any decorated
         DataFrame method will perform the following in addition to the
         user's results.
         """
+
         def decorator(func):
             @functools.wraps(func)
             def wrapper(self, *args, **kwargs):
@@ -103,19 +110,19 @@ class TidyDataFrame:
                     if not kwargs.get("disable_message", False):
                         self._log_operation(
                             operation=func.__name__ if alias is None else alias,
-                            message=eval(
-                                f"f'{message}'"
-                            ),
+                            message=eval(f"f'{message}'"),
                         )
                     return result
+
             return wrapper
+
         return decorator
 
     @property
     def data(self):
         """
         Return data attribute ("exit" TidyDataFrame)
-        
+
         Note
         ====
         Ideally, this method is used at the end of a chain of commands. More
@@ -133,7 +140,9 @@ class TidyDataFrame:
         )
         """
         self._log_operation(
-            "<< exit <<", self.__repr__(data_type=type(self._data).__name__), level='success'
+            "<< exit <<",
+            self.__repr__(data_type=type(self._data).__name__),
+            level="success",
         )
         return self._data
 
@@ -233,7 +242,9 @@ class TidyDataFrame:
         message="removed {self.count() - self.count(result):,} NAs",
         # alias="filter_na"
     )
-    def dropna(self, how="any", thresh=None, subset=None, disable_message: bool = False):
+    def dropna(
+        self, how="any", thresh=None, subset=None, disable_message: bool = False
+    ):
         self._data = self._data.dropna(how=how, thresh=thresh, subset=subset)
         return self
 
@@ -269,7 +280,9 @@ class TidyDataFrame:
     @_tdf_controller(
         message="appended {(self.count() - self.count(result)) * -1:,} rows, remaining {self.count():,} rows"
     )
-    def unionByName(self, other, allowMissingColumns=False, disable_message: bool = False):
+    def unionByName(
+        self, other, allowMissingColumns=False, disable_message: bool = False
+    ):
         self._data = self._data.unionByName(
             other, allowMissingColumns=allowMissingColumns
         )
@@ -283,35 +296,37 @@ class TidyDataFrame:
         return self
 
     ### COLUMN EDITING OPERATIONS
-    @_tdf_controller( # use of single apostrophes is intentional
+    @_tdf_controller(  # use of single apostrophes is intentional
         message='created `{args[0] if args else kwargs.get("colName")}` (< type >)',
         alias="mutate",
     )
     def withColumn(self, colName, col, disable_message: bool = False):
         self._data = self._data.withColumn(colName=colName, col=col)
         return self
-    
+
     @_tdf_controller(
-        message='creating multiple columns',
+        message="creating multiple columns",
         alias="rename",
     )
     def withColumns(self, *colsMap, disable_message: bool = False):
         self._data = self._data.withColumns(*colsMap)
         return self
 
-    @_tdf_controller( # use of single apostrophes is intentional
+    @_tdf_controller(  # use of single apostrophes is intentional
         message='column `{args[0] if args else kwargs.get("existing")}` renamed to `{args[1] if args else kwargs.get("new")}`',
         alias="rename",
     )
     def withColumnRenamed(self, existing, new, disable_message: bool = False):
         self._data = self._data.withColumnRenamed(existing=existing, new=new)
         return self
-    
+
     ### TidyDataFrame methods
     @_tdf_controller(
         message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
     )
-    def tdf_filter_nulls(self, columns: Union[str, list[str]] = None, strict: bool = False):
+    def tdf_filter_nulls(
+        self, columns: Union[str, list[str]] = None, strict: bool = False
+    ):
         """Shortcut function for filtering null values"""
         ### coerce columns to list of strings
         if columns is None:
@@ -321,13 +336,13 @@ class TidyDataFrame:
                 columns = [columns]
         ### enforce strict is boolean value
         if not isinstance(strict, bool):
-            raise ValueError('strict must be boolean value!')
+            raise ValueError("strict must be boolean value!")
         comp_op = operator.and_ if strict else operator.or_
         ### construct query per column, append together into one condition
-        query_list = [col(key).isNull() | col(key).rlike('^\s*$') for key in columns]
+        query_list = [col(key).isNull() | col(key).rlike("^\s*$") for key in columns]
         query_expression = functools.reduce(lambda x, y: comp_op(x, y), query_list)
-        return self.filter(condition = ~ query_expression)
-    
+        return self.filter(condition=~query_expression)
+
     # @_tdf_controller(
     #     message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
     # )
@@ -341,7 +356,7 @@ class TidyDataFrame:
     #     if dtype == "date":
     #         self._data = self.tdf_cast_date(columns=columns)
     #     return self
-    
+
     # def tdf_cast_string(self, columns: list[str], dtype="string"):
     #     self._validate_dtype(dtype=dtype, category='all')
     #     self._data = self._data.withColumns({key: F.col(key).cast(dtype) for key in columns})
@@ -375,16 +390,17 @@ class TidyDataFrame:
         make use of these methods as if they were calling it from a DataFrame.
         This function will evaluate if and only if an attribute is not available
         in TidyDataFrame.
-        
+
         If the attribute is available in pyspark.sql.DataFrame, the result will
         be calculated and returned as a TidyDataFrame. This is to allow the user
         to continue receiving logging messages on methods (if any) called after
         said attribute.
-        
+
         If the attribute is not available in pyspark.sql.DataFrame, the
         corresponding pyspark error will be raised.
         """
         if hasattr(self._data, attr):
+
             def wrapper(*args, **kwargs):
                 result = getattr(self._data, attr)(*args, **kwargs)
                 if isinstance(result, pyspark.sql.DataFrame):
@@ -395,6 +411,7 @@ class TidyDataFrame:
                     return self
                 else:
                     return self
+
             return wrapper
         ### TODO: validate if this logging operation is legit
         ### TODO: mark as unstable (sometimes get notebook dependencies caught in this; generates long message)
