@@ -8,6 +8,32 @@ import pyspark.pandas as ps
 from pyspark.sql.pandas import types, functions as F
 
 
+def format_testing_period(
+    fiscal_calendar: tuple[dict],
+    period_start: int = 1,
+    period_end: int = 12
+) -> dict[str, datetime.date]:
+    """Given a fiscal calendar, extract and format the testing period start/end dates."""
+    
+    def extract_testing_period(
+        fiscal_calendar: tuple[dict],
+        period_value: int,
+        date_label: str
+    ) -> datetime.date:
+        """Filter fiscal calendar for requested period, return relevant date value."""
+        testing_period = tuple(
+            period
+            for period in fiscal_calendar
+            if period.get("fiscal_period") == period_value
+        )
+        return testing_period[0].get(date_label)
+    
+    return {
+        date_label: extract_testing_period(fiscal_calendar, period_value, date_label)
+        for date_label, period_value in zip(("date_start", "date_end"), (period_start, period_end))
+    }
+
+
 def get_fiscal_calendar(
     fiscal_calendar_dict: dict = None,
     fiscal_year: int = datetime.datetime.now().year,
