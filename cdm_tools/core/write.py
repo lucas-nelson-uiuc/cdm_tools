@@ -8,9 +8,9 @@ def cp_write(
     if preprocess_function is None:
         raise ValueError("Must pass function to `preprocess_function`")
     if not hasattr(preprocess_function, "_is_reviewed"):
-        raise ValueError("Passed function not decorated with `cdm_review`")
+        raise AssertionError("Passed function not decorated with `cdm_review`")
     if not preprocess_function._is_reviewed:
-        raise AssertionError("Passed function does not have all required signoffs")
+        raise PermissionError("Passed function does not have all required signoffs")
     print(f"Writing data to path: {args[1] if args else kwargs.get('path')}")
     write_func(*args, **kwargs)
     
