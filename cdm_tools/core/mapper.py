@@ -4,6 +4,31 @@ import functools
 from pyspark.sql import DataFrame, Column, functions as F
 
 
+def flag_nulls(data: DataFrame, columns: list[str], strict: bool = False) -> DataFrame:
+    """Create boolean column flagging null values across any/all column(s)"""
+    comparison_operator = operator.and_ if strict else operator.or_
+    comparison_query = functools.reduce(
+        comparison_operator, map(F.isnull, map(F.col, columns))
+    )
+    return data.withColumn("null_flag", comparison_query)
+
+
+def flag_duplicates(data: DataFrame, columns: list[str]) -> DataFrame:
+    """Create boolean column flagging duplicate values across all column(s)"""
+    return data.join(
+        (
+            data.groupby(*columns).agg((F.count("*") > 1).alias("duplicate_flag"))
+            # .withColumn(
+            #     "duplicate_flag",
+            #     F.when(F.col("duplicate_flag"), F.lit(1))
+            #     .otherwise(F.lit(0))
+            # )
+        ),
+        on=columns,
+        how="left",
+    )
+
+
 def map_values(
     data: DataFrame, mapping: dict[str, dict], label_column: str = "mapped_label"
 ) -> DataFrame:
