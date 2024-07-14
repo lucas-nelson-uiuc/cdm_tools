@@ -7,10 +7,10 @@ def cdm_review(**kwargs) -> callable:
     disprove procedures performed. Additionally, tracks staff involved in an
     engagement to be used in memos (if necessary).
     """
-    
+
     if not hasattr(cdm_review, "_staff"):
         setattr(cdm_review, "_staff", dict())
-    
+
     def decorator(func: callable) -> callable:
         assert (
             kwargs != dict()
@@ -23,16 +23,17 @@ def cdm_review(**kwargs) -> callable:
         staff = {
             staff.get("name"): {
                 "title": staff.get("title", "Missing Title"),
-                "signoff": staff.get("signoff", False)
+                "signoff": staff.get("signoff", False),
             }
             for _, staff in kwargs.items()
         }
-        
+
         # udpate staff listing, check if signoffs are missing
         cdm_review._staff |= staff
         missing_signoffs = list(
             itertools.compress(
-                cdm_review._staff, (not person.get("signoff") for person in cdm_review._staff)
+                cdm_review._staff,
+                (not person.get("signoff") for person in cdm_review._staff),
             )
         )
 

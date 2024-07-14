@@ -1,8 +1,5 @@
 def cp_write(
-    *args,
-    write_func: callable,
-    preprocess_function: callable = None,
-    **kwargs
+    *args, write_func: callable, preprocess_function: callable = None, **kwargs
 ) -> None:
     """Integrate DocuSign feature for file writing."""
     if preprocess_function is None:
@@ -13,4 +10,3 @@ def cp_write(
         raise PermissionError("Passed function does not have all required signoffs")
     print(f"Writing data to path: {args[1] if args else kwargs.get('path')}")
     write_func(*args, **kwargs)
-    
