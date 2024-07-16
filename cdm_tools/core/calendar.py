@@ -9,16 +9,12 @@ from pyspark.sql.pandas import types, functions as F
 
 
 def format_testing_period(
-    fiscal_calendar: tuple[dict],
-    period_start: int = 1,
-    period_end: int = 12
+    fiscal_calendar: tuple[dict], period_start: int = 1, period_end: int = 12
 ) -> dict[str, datetime.date]:
     """Given a fiscal calendar, extract and format the testing period start/end dates."""
-    
+
     def extract_testing_period(
-        fiscal_calendar: tuple[dict],
-        period_value: int,
-        date_label: str
+        fiscal_calendar: tuple[dict], period_value: int, date_label: str
     ) -> datetime.date:
         """Filter fiscal calendar for requested period, return relevant date value."""
         testing_period = tuple(
@@ -27,10 +23,12 @@ def format_testing_period(
             if period.get("fiscal_period") == period_value
         )
         return testing_period[0].get(date_label)
-    
+
     return {
         date_label: extract_testing_period(fiscal_calendar, period_value, date_label)
-        for date_label, period_value in zip(("date_start", "date_end"), (period_start, period_end))
+        for date_label, period_value in zip(
+            ("date_start", "date_end"), (period_start, period_end)
+        )
     }
 
 
@@ -94,25 +92,3 @@ def get_fiscal_calendar(
             ],
         }
     ).to_spark()
-
-
-def get_fiscal_calendar_data(
-    data: pyspark.sql.DataFrame,
-    fiscal_calendar: Union[dict, pyspark.sql.DataFrame],
-    date_column: str = "date_effective",
-    boundary_columns: tuple[str] = ("date_start", "date_effective"),
-) -> pyspark.sql.DataFrame:
-    """Join fiscal calendar onto a pyspark.sql.DataFrame
-
-    Given a fiscal calendar object, all relevant information can be joined onto
-    the passed DataFrame for all observations within a given fiscal period.
-    """
-    if isinstance(fiscal_calendar, dict):
-        fiscal_calendar = get_fiscal_calendar(fiscal_calendar_dict=fiscal_calendar)
-    return data.withColumn(date_column, F.col(date_column).cast(types.DateType())).join(
-        fiscal_calendar,
-        on=F.col(date_column).between(
-            F.col(boundary_columns[0]), F.col(boundary_columns[1])
-        ),
-        how="left",
-    )

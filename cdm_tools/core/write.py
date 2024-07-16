@@ -1,8 +1,5 @@
 def cp_write(
-    *args,
-    write_func: callable,
-    preprocess_function: callable = None,
-    **kwargs
+    *args, write_func: callable, preprocess_function: callable = None, **kwargs
 ) -> None:
     """Integrate DocuSign feature for file writing."""
     if not preprocess_function:

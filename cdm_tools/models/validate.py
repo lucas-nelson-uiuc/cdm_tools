@@ -11,7 +11,6 @@ def cdm_validate(model):
             data = func(*args, **kwargs)
             all_fields = dict()
             for field, field_info in model.model_fields.items():
-                
                 # collect all validations performed on a field
                 field_validators = dict()
 
@@ -37,24 +36,26 @@ def cdm_validate(model):
                             field_validators["minimum_lt"] = operator.lt(
                                 F.column(field), operation.lt
                             )
-                
+
                 # build support for custom validations
                 if field_info.json_schema_extra:
                     if field_info.json_schema_extra.get("distinct"):
                         field_name = field_info.alias or field
                         field_validators["custom_distinct"] = operator.sub(
                             data.count(),
-                            data.drop_duplicates(subset=[field_name]).count()
+                            data.drop_duplicates(subset=[field_name]).count(),
                         )
-                
+
                 all_fields[field] = field_validators
-            
+
             for field, validation_queue in all_fields.items():
                 if validation_queue == dict():
                     continue
                 print(f">>> Validating `{field}`")
                 for operation_name, operation in validation_queue.items():
-                    if operation_name.startswith("custom_"): # need better way of handling custom operations
+                    if operation_name.startswith(
+                        "custom_"
+                    ):  # need better way of handling custom operations
                         validation_count = operation
                         operation = "<code unavailable>"
                     else:
