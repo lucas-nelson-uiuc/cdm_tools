@@ -5,7 +5,7 @@ def cp_write(
     **kwargs
 ) -> None:
     """Integrate DocuSign feature for file writing."""
-    if preprocess_function is None:
+    if not preprocess_function:
         raise ValueError("Must pass function to `preprocess_function`")
     if not hasattr(preprocess_function, "_is_reviewed"):
         raise AssertionError("Passed function not decorated with `cdm_review`")
@@ -13,4 +13,3 @@ def cp_write(
         raise PermissionError("Passed function does not have all required signoffs")
     print(f"Writing data to path: {args[1] if args else kwargs.get('path')}")
     write_func(*args, **kwargs)
-    

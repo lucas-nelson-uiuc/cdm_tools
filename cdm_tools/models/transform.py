@@ -12,49 +12,64 @@ def cdm_transform(model):
             data = func(*args, **kwargs)
             all_transformations = dict()
             for field, field_info in model.model_fields.items():
-                # rename column to specified name
+                
+                # gather, extract metadata
                 all_transformations[field] = dict()
                 field_name = field_info.alias or field
+                field_type = PYDANTIC_TYPES.get(field_info.annotation, types.NullType())
+                
                 if field_name in data.columns:
+                    # rename columns if alias provided
                     if field_name != field:
-                        all_transformations[field]["rename"] = (
-                            f"{field_name} to {field}"
-                        )
+                        all_transformations[field]["rename"] = f"{field_name} to {field}"
                         data = data.withColumn(field, F.col(field_name))
 
                     # cast to specified data type; attempt multiple formats for dates, timestamps
-                    field_type = PYDANTIC_TYPES.get(
-                        field_info.annotation, types.NullType()
-                    )
-                    if field_type != types.StringType():
+                    if not isinstance(field_type, types.StringType):
                         all_transformations[field]["cast"] = (
                             f"{field} as {field_type.__class__.__name__}"
                         )
-                    if field_type == types.DateType():
-                        formatted_dates = [
-                            F.to_date(F.col(field), fmt) for fmt in DATE_FORMATS
-                        ]
+                    if isinstance(field_type, types.DateType):
+                        if field_info.json_schema_extra:
+                            date_format = field_info.json_schema_extra.get("date_format", "MM/dd/yyyy")
+                            formatted_dates = [F.to_date(F.col(field), date_format)]
+                        else:
+                            formatted_dates = [
+                                F.to_date(F.col(field), fmt) for fmt in DATE_FORMATS
+                            ]
                         data = data.withColumn(field, F.coalesce(*formatted_dates))
-                    elif field_type == types.TimestampType():
+                    elif isinstance(field_type, types.TimestampType):
                         formatted_timestamps = [
-                            F.to_timestamp(F.col(field), fmt)
-                            for fmt in TIMESTAMP_FORMATS
+                            F.to_timestamp(F.col(field), fmt) for fmt in TIMESTAMP_FORMATS
                         ]
-                        data = data.withColumn(field, F.coalesce(*formatted_timestamps))
+                        data = data.withColumn(field, F.date_format(F.coalesce(*formatted_timestamps), "MM/dd/yyyy HH:mm:ss"))
+                        # data = data.withColumn(field, date_format(F.col(field).cast(field_type), "MM/dd/yyyy HH:mm:ss"))
+                    elif isinstance(field_type, types.DecimalType):
+                        data = data.withColumn(
+                            field,
+                            F.regexp_replace(
+                                F.regexp_replace(
+                                    F.col(field),
+                                    "\(", "-"
+                                ),
+                                "[^-\d.eE]+", ""
+                            ).cast(field_type)
+                        )
                     else:
                         data = data.withColumn(field, F.col(field).cast(field_type))
-
-                if field_name not in data.columns:
-                    data = data.withColumn(
-                        field_name, F.lit(None).cast(types.StringType())
-                    )
-
+                
                 # mutate field according to default value, if provided
                 if field_info.default_factory:
                     data = data.withColumn(field, field_info.default_factory("x"))
                     all_transformations[field]["mutate"] = (
-                        "default assigned as <operation-here>"
+                        f"default assigned as {field_info.default_factory}"
                     )
+
+                # mutate fields with null values
+                if field_name not in data.columns:
+                    all_transformations[field]["mutate"] = "default assigned as NULL"
+                    # assert isinstance(field_type, types.NullType), f"Missing mapping for required field: {field_name}"
+                    data = data.withColumn(field_name, F.lit(None).cast(types.StringType()))
 
             for field, transformation in all_transformations.items():
                 if transformation:
