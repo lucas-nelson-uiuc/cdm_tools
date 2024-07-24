@@ -17,12 +17,9 @@ def flag_duplicates(data: DataFrame, columns: list[str]) -> DataFrame:
     """Create boolean column flagging duplicate values across all column(s)"""
     return data.join(
         (
-            data.groupby(*columns).agg((F.count("*") > 1).alias("duplicate_flag"))
-            # .withColumn(
-            #     "duplicate_flag",
-            #     F.when(F.col("duplicate_flag"), F.lit(1))
-            #     .otherwise(F.lit(0))
-            # )
+            data
+            .groupby(*columns)
+            .agg((F.count("*") > 1).alias("duplicate_flag"))
         ),
         on=columns,
         how="left",
@@ -155,5 +152,7 @@ def map_values(
 
     assert_valid_mapping(mapping)
     return apply_expressions(
-        data=data, mapping=generate_expressions(mapping), label_column=label_column
+        data=data,
+        mapping=generate_expressions(mapping),
+        label_column=label_column
     )
