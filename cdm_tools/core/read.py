@@ -28,7 +28,7 @@ def cp_read_fwf(
     filepath: str,
     column_mapping: Iterable[tuple[str, int]],
     column_extract: str = "_c0",
-    drop_extract: bool = True
+    drop_extract: bool = True,
 ) -> DataFrame:
     """
     Iteratively extract data from `column_extract` using the column names and positions
@@ -49,16 +49,23 @@ def cp_read_fwf(
     >>> # ... good idea to run `clean_df(data)` to remove extra spaces ...
     """
     ERROR_MESSAGE_TYPES = "Please revise your column_mapping. Each pair must be of type (str, int). See example for more details."
-    assert all(isinstance(name, str) and isinstance(index, int) for name, index in column_mapping), ERROR_MESSAGE_TYPES
+    assert all(
+        isinstance(name, str) and isinstance(index, int)
+        for name, index in column_mapping
+    ), ERROR_MESSAGE_TYPES
 
     ERROR_MESSAGE_ORDER = "Please revise your column mapping. The starting index of all pairs must be in ascending order."
-    assert column_mapping == sorted(column_mapping, key=lambda pair: pair[1]), ERROR_MESSAGE_ORDER
+    assert column_mapping == sorted(
+        column_mapping, key=lambda pair: pair[1]
+    ), ERROR_MESSAGE_ORDER
 
     return (
         cp.read(filepath)
-        .withColumns({
-            column: F.substring(column_extract, pos=start, len=end - start)
-            for (column, start), (_, end) in itertools.pairwise(column_mapping)
-        })
+        .withColumns(
+            {
+                column: F.substring(column_extract, pos=start, len=end - start)
+                for (column, start), (_, end) in itertools.pairwise(column_mapping)
+            }
+        )
         .drop(column_extract if drop_extract else "")
     )
