@@ -1,11 +1,9 @@
-from typing import Union
 import re
 import datetime
 import calendar
 
 import pyspark
 import pyspark.pandas as ps
-from pyspark.sql.pandas import types, functions as F
 
 
 def format_testing_period(

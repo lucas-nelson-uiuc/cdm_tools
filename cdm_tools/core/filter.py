@@ -50,7 +50,7 @@ def filter_range(
     """Keep all observations that exist in a range."""
 
     assert all(
-        type(elem) == type(range[0]) for elem in range
+        isinstance(elem, range[0]) for elem in range
     ), "Elements must be same type."
     assert (
         len(type) == 2

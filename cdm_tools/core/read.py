@@ -4,8 +4,7 @@ import itertools
 
 from typing import Iterable
 
-import pyspark
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, functions as F
 
 
 def cp_read(
@@ -15,7 +14,7 @@ def cp_read(
     fs_func: callable = None,
     read_func: callable = None,
     union_func: callable = DataFrame.unionByName,
-) -> pyspark.sql.DataFrame:
+) -> DataFrame:
     pattern = re.compile(pattern)
     files = filter(
         lambda fp: isinstance(pattern.match(fp), re.Match),
