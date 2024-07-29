@@ -1,4 +1,3 @@
-from pydantic import Field
 from ..common import CommonDataModel
 
 import decimal
