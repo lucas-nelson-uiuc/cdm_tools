@@ -1,25 +1,39 @@
+from typing import Iterable
 import re
 import functools
 import itertools
 
-from typing import Iterable
-
 from pyspark.sql import DataFrame, functions as F
+
+from cdm_tools.models.detect import cdm_detect
 
 
 def cp_read(
     filepath: str,
     pattern: str = ".*",
     recursive: bool = False,
+    auto_detect: bool = False,
     fs_func: callable = None,
     read_func: callable = None,
     union_func: callable = DataFrame.unionByName,
+    read_kwargs: dict = None,
 ) -> DataFrame:
+    """
+    Read and union file(s) at provided filepath.
+
+    By default, it is assumed all data has the same schema. If preferred, the
+    auto_detect parameter can be set to True which will infer the schema of
+    all data prior to reading/unioning.
+    """
     pattern = re.compile(pattern)
     files = filter(
         lambda fp: isinstance(pattern.match(fp), re.Match),
         fs_func(filepath, recursive=recursive),
     )
+    partial_read_func = functools.partial(read_func, **read_kwargs)
+    if auto_detect:
+        detected_schema = cdm_detect(files, assert_equal=True)
+        partial_read_func = functools.partial(partial_read_func, schema=detected_schema)
     return functools.reduce(union_func, map(read_func, files))
 
 

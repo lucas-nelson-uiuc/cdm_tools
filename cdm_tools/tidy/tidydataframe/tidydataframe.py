@@ -52,7 +52,7 @@ class TidyDataFrame:
             ">> enter >>", self.__repr__(data_type=type(self).__name__), level="success"
         )
 
-    def __repr__(self, data_type: str):
+    def __repr__(self, data_type: str = "TidyDataFrame"):
         """String representation of TidyDataFrame"""
         n_rows_repr = (
             f"{self._n_rows:,}" if isinstance(self._n_rows, int) else self._n_rows
@@ -90,7 +90,7 @@ class TidyDataFrame:
         #> Removing null values from ID column
         #> filter: contains N rows, removed X rows, returned N-X rows
         """
-        getattr(logger, level)(f"#> {operation}: {message}")
+        getattr(logger, level)(f"#> {operation:<12}: {message}")
         return self
 
     def _tdf_controller(message: str, alias: str = None):
@@ -261,10 +261,10 @@ class TidyDataFrame:
         self._data = self._data.select(*cols)
         return self
 
-    def drop(self, cols, disable_message: bool = False):
-        all_cols = self._data.columns
-        drop_cols = set(all_cols).difference(set(cols))
-        return self.select(*drop_cols)
+    @_tdf_controller(message="dropped {len(args)} columns, {self._n_cols} remaining")
+    def drop(self, *cols, disable_message: bool = False):
+        self._data = self._data.drop(*cols)
+        return self
 
     ### JOIN OPERATIONS
     @_tdf_controller(
@@ -319,67 +319,6 @@ class TidyDataFrame:
     def withColumnRenamed(self, existing, new, disable_message: bool = False):
         self._data = self._data.withColumnRenamed(existing=existing, new=new)
         return self
-
-    ### TidyDataFrame methods
-    @_tdf_controller(
-        message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
-    )
-    def tdf_filter_nulls(
-        self, columns: Union[str, list[str]] = None, strict: bool = False
-    ):
-        """Shortcut function for filtering null values"""
-        ### coerce columns to list of strings
-        if columns is None:
-            columns = self._data.columns
-        if not isinstance(columns, list):
-            if isinstance(columns, str):
-                columns = [columns]
-        ### enforce strict is boolean value
-        if not isinstance(strict, bool):
-            raise ValueError("strict must be boolean value!")
-        comp_op = operator.and_ if strict else operator.or_
-        ### construct query per column, append together into one condition
-        query_list = [col(key).isNull() | col(key).rlike("^\s*$") for key in columns]
-        query_expression = functools.reduce(lambda x, y: comp_op(x, y), query_list)
-        return self.filter(condition=~query_expression)
-
-    # @_tdf_controller(
-    #     message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
-    # )
-    # def tdf_cast(self, columns: list[str], dtype: str = "string"):
-    #     dtype = dtype.strip().lower()
-    #     # self._validate_dtype(dtype=dtype, category='all')
-    #     if dtype == "string":
-    #         self._data = self.tdf_cast_string(columns=columns)
-    #     if dtype == "decimal":
-    #         self._data = self.tdf_cast_numeric(columns=columns)
-    #     if dtype == "date":
-    #         self._data = self.tdf_cast_date(columns=columns)
-    #     return self
-
-    # def tdf_cast_string(self, columns: list[str], dtype="string"):
-    #     self._validate_dtype(dtype=dtype, category='all')
-    #     self._data = self._data.withColumns({key: F.col(key).cast(dtype) for key in columns})
-    #     return self
-
-    # def tdf_cast_numeric(self, columns: list[str], dtype="decimal"):
-    #     RE_VALUES = "([\(-\d\.]+)"
-    #     # NUMERIC_DTYPES = ['decimal', 'integer', 'float']
-    #     # if dtype not in NUMERIC_DTYPES:
-    #     #     raise ValueError(f"`dtype` "{dtype}" is invalid - must be one of {', '.join(NUMERIC_DTYPES)}")
-    #     # self._validate_dtype(dtype=dtype, category='numeric')
-    #     self._data = (
-    #         self._data
-    #         .withColumns({key: F.regexp_replace(str=F.col(key), pattern='(', replacement='-') for key in columns})
-    #         .withColumns({key: F.regexp_extract(str=F.col(key), pattern=RE_VALUES, idx=0) for key in columns})
-    #         .withColumns({key: F.col(key).cast(dtype) for key in columns})
-    #     )
-    #     return self
-
-    # def tdf_cast_date(self, columns: list[str], dtype="date"):
-    #     # self._validate_dtype(dtype=dtype, category='date')
-    #     self._data = self._data.withColumns({key: F.col(key).cast(dtype) for key in columns})
-    #     return self
 
     def __getattr__(self, attr):
         """
