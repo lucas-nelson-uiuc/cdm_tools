@@ -27,6 +27,7 @@ def cp_read(
 def cp_read_fwf(
     filepath: str,
     column_mapping: Iterable[tuple[str, int]],
+    read_func: callable = None,
     column_extract: str = "_c0",
     drop_extract: bool = True
 ) -> DataFrame:
@@ -48,6 +49,10 @@ def cp_read_fwf(
     >>> data = cp__read_fwf(filepath="path/to/fwf.txt", column_mapping=column_mapping)
     >>> # ... good idea to run `clean_df(data)` to remove extra spaces ...
     """
+
+    if read_func is None:
+        raise ValueError("Please pass a readin-function to `read_func` (e.g. cp.read)")
+
     ERROR_MESSAGE_TYPES = "Please revise your column_mapping. Each pair must be of type (str, int). See example for more details."
     assert all(isinstance(name, str) and isinstance(index, int) for name, index in column_mapping), ERROR_MESSAGE_TYPES
 
@@ -55,7 +60,7 @@ def cp_read_fwf(
     assert column_mapping == sorted(column_mapping, key=lambda pair: pair[1]), ERROR_MESSAGE_ORDER
 
     return (
-        cp.read(filepath)
+        read_func(filepath)
         .withColumns({
             column: F.substring(column_extract, pos=start, len=end - start)
             for (column, start), (_, end) in itertools.pairwise(column_mapping)
