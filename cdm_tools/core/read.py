@@ -4,8 +4,7 @@ import itertools
 
 from typing import Iterable
 
-import pyspark
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, functions as F
 
 
 def cp_read(
@@ -15,7 +14,7 @@ def cp_read(
     fs_func: callable = None,
     read_func: callable = None,
     union_func: callable = DataFrame.unionByName,
-) -> pyspark.sql.DataFrame:
+) -> DataFrame:
     pattern = re.compile(pattern)
     files = filter(
         lambda fp: isinstance(pattern.match(fp), re.Match),
@@ -29,7 +28,7 @@ def cp_read_fwf(
     column_mapping: Iterable[tuple[str, int]],
     read_func: callable = None,
     column_extract: str = "_c0",
-    drop_extract: bool = True
+    drop_extract: bool = True,
 ) -> DataFrame:
     """
     Iteratively extract data from `column_extract` using the column names and positions
@@ -54,13 +53,18 @@ def cp_read_fwf(
         raise ValueError("Please pass a readin-function to `read_func` (e.g. cp.read)")
 
     ERROR_MESSAGE_TYPES = "Please revise your column_mapping. Each pair must be of type (str, int). See example for more details."
-    assert all(isinstance(name, str) and isinstance(index, int) for name, index in column_mapping), ERROR_MESSAGE_TYPES
+    assert all(
+        isinstance(name, str) and isinstance(index, int)
+        for name, index in column_mapping
+    ), ERROR_MESSAGE_TYPES
 
     ERROR_MESSAGE_ORDER = "Please revise your column mapping. The starting index of all pairs must be in ascending order."
-    assert column_mapping == sorted(column_mapping, key=lambda pair: pair[1]), ERROR_MESSAGE_ORDER
+    assert column_mapping == sorted(
+        column_mapping, key=lambda pair: pair[1]
+    ), ERROR_MESSAGE_ORDER
 
     return (
-        read_func(filepath)
+        cp.read(filepath)
         .withColumns({
             column: F.substring(column_extract, pos=start, len=end - start)
             for (column, start), (_, end) in itertools.pairwise(column_mapping)

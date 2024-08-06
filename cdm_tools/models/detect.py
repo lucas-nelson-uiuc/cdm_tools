@@ -1,143 +1,271 @@
+from typing import Optional
 import re
-from pyspark.sql import DataFrame, functions as F, types
-
-
-import calendar
+import difflib
 import itertools
+import collections
+
+from pyspark.sql import Column, DataFrame, functions as F, types as T
+
+from cdm_tools.models.formats import DTYPE_REGEX_PATTERNS
 
 
-def generate_date_formats(
-    date_formats: tuple[str],
-    day_components: tuple[str],
-    month_components: tuple[str],
-    year_components: tuple[str],
-    sep_components: tuple[str],
-) -> tuple[str]:
-    """Generate collection of possible date formats"""
-    format_combinations = itertools.product(
-        day_components, month_components, year_components
-    )
-    return list(
-        df.format(day=day, month=month, year=year).replace(".", sep)
-        for df in date_formats
-        for day, month, year in format_combinations
-        for sep in sep_components
-    )
-
-
-day_components = ("\d{1,2}",)
-month_components = (
-    *list(mn for mn in calendar.month_name if mn != ""),
-    *list(ma for ma in calendar.month_abbr if ma != ""),
-    "\d{1,2}",
-)
-year_components = ("\d{2}", "\d{4}")
-sep_components = ("/", ".", "-")
-
-
-date_formats = (
-    "{month}.{day}.{year}",
-    "{year}.{month}.{day}",
-    "{day}.{month}.{year}",
-    "{year}.{day}.{month}",
-    "{day}.{year}.{month}",
-    "{month}.{year}.{day}",
-)
-
-timestamp_formats = (
-    "'T'HH:mm:ss aa",
-    "'T'HH:mm:ss",
-    "'T'HH:mm aa",
-    "'T'HH:mm" "HH:mm:ss aa",
-    "HH:mm:ss",
-    "HH:mm aa",
-    "HH:mm",
-    "'T'hh:mm:ss aa",
-    "'T'hh:mm:ss",
-    "'T'hh:mm aa",
-    "'T'hh:mm" "hh:mm:ss aa",
-    "hh:mm:ss",
-    "hh:mm aa",
-    "hh:mm",
-)
-
-
-DATE_FORMATS = generate_date_formats(
-    date_formats, day_components, month_components, year_components, sep_components
-)
-
-TIMESTAMP_FORMATS = [f"{df} {tf}" for df in DATE_FORMATS for tf in timestamp_formats]
-
-
-# Define multiple regex patterns for each type
-DECIMAL_REGEXES = [
-    r"^\$?\-?([1-9]{1}[0-9]{0,2}(\,\d{3})*(\.\d{0,2})?|[1-9]{1}\d{0,}(\.\d{0,2})?|0(\.\d{0,2})?|(\.\d{1,2}))$|^\-?\$?([1-9]{1}\d{0,2}(\,\d{3})*(\.\d{0,2})?|[1-9]{1}\d{0,}(\.\d{0,2})?|0(\.\d{0,2})?|(\.\d{1,2}))$|^\(\$?([1-9]{1}\d{0,2}(\,\d{3})*(\.\d{0,2})?|[1-9]{1}\d{0,}(\.\d{0,2})?|0(\.\d{0,2})?|(\.\d{1,2}))\)$"
-]
-INTEGER_REGEXES = [r"^-?\d+$"]
-DATE_REGEXES = DATE_FORMATS
-DATETIME_REGEXES = TIMESTAMP_FORMATS
-BOOLEAN_REGEXES = [r"^(true|false|1|0)$"]
-
-
-def match_any_regex(column, regexes):
+def match_any_regex(column: str, regexes: list[str]) -> Column:
+    """Create a SQL expression to check if any regex matches the column value."""
     return F.col(column).rlike("|".join(regexes))
 
 
+def format_schema(
+    schema: dict[str, T.DataType],
+    max_len: Optional[int] = 0,
+    default_max_len: Optional[int] = 16,
+) -> list[str]:
+    """
+    Format a schema dictionary into a list of string representations.
+
+    Parameters
+    ----------
+    schema : dict[str, T.DataType]
+        Schema dictionary where keys are column names and values are data T.
+    max_len : int, optional
+        Maximum length for padding column names, by default 0.
+    default_max_len : int, optional
+        Default maximum length if max_len is not provided, by default 16.
+
+    Returns
+    -------
+    list[str]
+        List of formatted schema strings.
+    """
+    max_len = max(max_len, default_max_len)
+    return [f"{key:<{max_len}}\t{value}" for key, value in schema.items()]
+
+
+def compare_schema(*schema: tuple[dict]) -> list[list[str]]:
+    """
+    Compare multiple schemas and return the differences.
+
+    Parameters
+    ----------
+    schema : tuple[dict]
+        Tuple of schema dictionaries to compare.
+
+    Returns
+    -------
+    list[list[str]]
+        List of lists containing differences between schemas.
+    """
+    max_len = max(map(lambda s: max(map(len, s.keys())), schema))
+    pairs = itertools.pairwise(schema)
+    return [
+        list(
+            difflib.ndiff(
+                format_schema(schema_observed, max_len),
+                format_schema(schema_expected, max_len),
+            )
+        )
+        for schema_observed, schema_expected in pairs
+    ]
+
+
+def assert_schema_equal(*schema: tuple[dict]) -> None:
+    """
+    Assert that multiple schemas are equal and print differences if they are not.
+
+    Parameters
+    ----------
+    schema : tuple[dict]
+        Tuple of schema dictionaries to compare.
+
+    Raises
+    ------
+    AssertionError
+        If schemas are not equal.
+    """
+
+    MISMATCH = re.compile("^[+-?]")
+    DIFFERENCE = re.compile("\^")
+
+    def is_difference(line: str) -> bool:
+        return MISMATCH.search(line) or DIFFERENCE.search(line)
+
+    def contains_difference(report: list[str]) -> bool:
+        return any(map(is_difference, report))
+
+    comparison = compare_schema(*schema)
+    diff_schema = list(map(contains_difference, comparison))
+    if diff_schema:
+        for mismatch in itertools.compress(comparison, diff_schema):
+            mismatch_lines = filter(is_difference, mismatch)
+            print("[WARNING] Difference detected in schemas")
+            print("\n".join(mismatch_lines) + "\n")
+
+
 def cdm_detect(
-    data: DataFrame, sample_fraction: float = 0.2, dtype_threshold: float = 0.9
+    *data: tuple[DataFrame],
+    sample_fraction: Optional[float] = 0.2,
+    dtype_threshold: Optional[float] = 0.9,
+    assert_equal: Optional[bool] = False,
+    expected_schema: Optional[dict[str, T.DataType]] = None,
+    _regex_patterns: Optional[dict[T.DataType, list[str]]] = DTYPE_REGEX_PATTERNS,
 ) -> dict:
-    data = data.sample(fraction=sample_fraction).select(
-        [F.col(c).cast(types.StringType()).alias(c) for c in data.columns]
-    )
-    data_count = data.count()
+    """
+    Infer the schema for all DataFrame(s) passed. Using a randomly selected
+    sample of the data, each column is matched against multiple regular expressions,
+    returning the "best guess" based on the threshold provided.
 
-    data_metadata = {}
+    If multiple DataFrames are passed, `assert_equal` will check if all schemas
+    are identical. Else, a validation report will be printed showing differences
+    between the unique schemas.
 
-    for column in data.columns:
-        column_detected = False
+    If `expected_schema` is passed, all unique schemas will be compared against
+    the expectation. All differences, if any, will be displayed in the same
+    validation report generated by `assert_equal = True`.
 
-        temp = data.filter(F.col(column).isNotNull())
-        if (temp.count() / data_count) <= dtype_threshold:
-            data_metadata[column] = types.NullType()
-            column_detected = True
+    Parameters
+    ----------
+    data : tuple[DataFrame]
+        DataFrames to infer schema from.
+    sample_fraction : float, optional
+        Fraction of the data to sample for inference, by default 0.2.
+    dtype_threshold : float, optional
+        Threshold for dtype matching, by default 0.9.
+    assert_equal : bool, optional
+        If True, assert that all DataFrame schemas are equal, by default False.
+    expected_schema : dict[str, T.DataType], optional
+        Expected schema to compare against, by default None.
+    _regex_patterns : dict[T.DataType, list[str]], optional
+        Dictionary of regex patterns for data type matching, by default REGEX_PATTERNS.
 
-        # Detect if boolean column
-        if not column_detected:
-            temp = data.filter(match_any_regex(column, BOOLEAN_REGEXES))
-            if (temp.count() / data_count) >= dtype_threshold:
-                data_metadata[column] = types.BooleanType()
-                column_detected = True
+    Returns
+    -------
+    dict[str, T.DataType]
+        Mapping of all DataFrame(s) columns to their inferred data type.
+    """
 
-        # Detect if datetime column
-        if not column_detected:
-            temp = data.filter(match_any_regex(column, DATETIME_REGEXES))
-            if (temp.count() / data_count) >= dtype_threshold:
-                data_metadata[column] = types.TimestampType()
-                column_detected = True
+    def detect_schema(data: DataFrame) -> dict[str, T.DataType]:
+        """
+        Return inferred schema of DataFrame as dictionary.
 
-        # Detect if date column
-        if not column_detected:
-            temp = data.filter(match_any_regex(column, DATE_REGEXES))
-            if (temp.count() / data_count) >= dtype_threshold:
-                data_metadata[column] = types.DateType()
-                column_detected = True
+        Parameters
+        ----------
+        data : DataFrame
+            DataFrame to infer schema from.
 
-        # Detect if integer column
-        if not column_detected:
-            temp = data.filter(match_any_regex(column, INTEGER_REGEXES))
-            if (temp.count() / data_count) >= dtype_threshold:
-                data_metadata[column] = types.IntegerType()
-                column_detected = True
+        Returns
+        -------
+        dict[str, T.DataType]
+            Inferred schema dictionary.
+        """
 
-        # Detect if decimal column
-        if not column_detected:
-            temp = data.filter(match_any_regex(column, DECIMAL_REGEXES))
-            if (temp.count() / data_count) >= dtype_threshold:
-                data_metadata[column] = types.DecimalType(38, 6)
-                column_detected = True
+        data = data.sample(fraction=sample_fraction).select(
+            [F.col(c).cast(T.StringType()).alias(c) for c in data.columns]
+        )
+        data_count = data.count()
 
-        # Default to string if no type detected
-        if not column_detected:
-            data_metadata[column] = types.StringType()
+        def check_threshold(
+            matches: int, total: int = data_count, threshold: float = dtype_threshold
+        ) -> bool:
+            """
+            Check if proportion of matches meets or exceeds threshold.
 
-    return data_metadata
+            Parameters
+            ----------
+            matches : int
+                Number of matches.
+            total : int, optional
+                Total number of rows, by default data_count.
+            threshold : float, optional
+                Threshold for matching, by default dtype_threshold.
+
+            Returns
+            -------
+            bool
+                True if matches meet or exceed threshold, else False.
+            """
+            return (matches / total) >= threshold
+
+        def match_dtype(column: str) -> T.DataType:
+            """
+            Infer data type of column given regular expression matching.
+
+            Parameters
+            ----------
+            column : str
+                Column name.
+
+            Returns
+            -------
+            T.DataType
+                Inferred data type.
+            """
+            is_null = data.filter(F.col(column).isNull())
+            if check_threshold(is_null.count()):
+                return T.NullType()
+
+            for dtype, regex in _regex_patterns.items():
+                temp = data.filter(match_any_regex(column, regex))
+                if check_threshold(temp.count()):
+                    return dtype
+
+            return T.StringType()
+
+        return {column: match_dtype(column) for column in data.columns}
+
+    def group_schemas(
+        detected_schemas: tuple[dict[str, T.DataType]],
+    ) -> dict[tuple[str, T.DataType], list[int]]:
+        """
+        Group together identical schemas and store indices.
+
+        Parameters
+        ----------
+        detected_schemas : tuple[dict[str, T.DataType]]
+            Tuple of detected schema dictionaries.
+
+        Returns
+        -------
+        dict[tuple[str, T.DataType], list[int]]
+            Dictionary grouping identical schemas with indices.
+        """
+        schema_groups = collections.defaultdict(list)
+        for index, schema in enumerate(detected_schemas):
+            schema_tuple = tuple(schema.items())
+            schema_groups[schema_tuple].append(index)
+        return schema_groups
+
+    def display_schema_differences(
+        schema_groups: dict, expected_schema: Optional[dict] = None
+    ) -> None:
+        """
+        Display all unique schemas detected across all passed DataFrame(s).
+
+        If `expected_schema` is passed, compare it to all unique schemas and
+        report differences. Else, show all schemas without comparisons.
+
+        Parameters
+        ----------
+        schema_groups : dict
+            Dictionary of schema groups.
+        expected_schema : dict, optional
+            Expected schema to compare against, by default None.
+        """
+        unique_schemas = list(schema_groups.keys())
+        if len(unique_schemas) > 1:
+            print("[ERROR] Detected different schemas across DataFrames.")
+            for i, (schema, indices) in enumerate(schema_groups.items()):
+                schema = dict(schema)
+                print("_" * 50)
+                print(f"\nSchema {i + 1} -> DataFrames: {indices}")
+                print("_" * 50)
+                for field in format_schema(schema=schema):
+                    print(field)
+                if expected_schema:
+                    print()
+                    assert_schema_equal(schema, expected_schema)
+
+    detected_schema = tuple(map(detect_schema, data))
+    if assert_equal:
+        schema_groups = group_schemas(detected_schema)
+        display_schema_differences(schema_groups, expected_schema=expected_schema)
+
+    return detected_schema
