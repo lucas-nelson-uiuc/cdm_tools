@@ -9,7 +9,7 @@ PYDANTIC_TYPES = {
     int: T.IntegerType(),
     datetime.date: T.DateType(),
     datetime.datetime: T.TimestampType(),
-    decimal.Decimal: T.DecimalType(38, 6)
+    decimal.Decimal: T.DecimalType(38, 6),
 }
 
 DATE_FORMATS = (

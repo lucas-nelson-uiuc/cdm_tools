@@ -65,9 +65,11 @@ def cp_read_fwf(
 
     return (
         read_func(filepath)
-        .withColumns({
-            column: F.substring(column_extract, pos=start, len=end - start)
-            for (column, start), (_, end) in itertools.pairwise(column_mapping)
-        })
+        .withColumns(
+            {
+                column: F.substring(column_extract, pos=start, len=end - start)
+                for (column, start), (_, end) in itertools.pairwise(column_mapping)
+            }
+        )
         .drop(column_extract if drop_extract else "")
     )

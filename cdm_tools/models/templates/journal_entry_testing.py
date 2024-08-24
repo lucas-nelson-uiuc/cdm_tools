@@ -136,7 +136,7 @@ class TrialBalanceModel(CommonDataModel):
     adjusted_journal_entry_ec: Optional[decimal.Decimal]
     reclassification_journal_entry_ec: Optional[decimal.Decimal]
     preliminary_ec: Optional[decimal.Decimal]
-    
+
     ending_balance_gc: decimal.Decimal
     beginning_balance_gc: Optional[decimal.Decimal]
     period_activity_gc: Optional[decimal.Decimal]
@@ -179,9 +179,13 @@ class ChartOfAccountsModel(CommonDataModel):
     ### chart of accounts fields
     financial_statement_line: str
     financial_statement_line_num: str
-    financial_statement_category: str = Field(pattern="(Assets|Liabilities|Equity|Revenue|Expenses)")
+    financial_statement_category: str = Field(
+        pattern="(Assets|Liabilities|Equity|Revenue|Expenses)"
+    )
     financial_statement_category_id: Optional[str]
-    financial_statement_subtotal_category: str = Field(pattern="(Assets|Liabilities|Equity)")
+    financial_statement_subtotal_category: str = Field(
+        pattern="(Assets|Liabilities|Equity)"
+    )
     financial_statement_subtotal_category_id: Optional[str]
     financial_statement_type: str = Field(pattern="(Balance Sheet|Income Statement)")
     account_grouping_1: str
