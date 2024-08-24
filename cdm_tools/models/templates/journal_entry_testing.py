@@ -1,4 +1,4 @@
-from cdm_tools.models.common import CommonDataModel
+from ..common import CommonDataModel
 
 import decimal
 import datetime

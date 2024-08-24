@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from pyspark.sql import types as T
+
 
 class CommonDataModel(BaseModel):
     class Config:
@@ -8,6 +10,13 @@ class CommonDataModel(BaseModel):
     @classmethod
     def get_fields(cls):
         return cls.__annotations__.items()
+    
+    @classmethod
+    def get_schema(cls):
+        return T.StructType([
+            T.StructField(field_name, T.StringType())
+            for field_name in cls.model_fields.keys()
+        ])
 
     @classmethod
     def get_request_form(cls):
