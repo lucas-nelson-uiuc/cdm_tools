@@ -8,24 +8,7 @@ from typing import Optional
 import datetime
 import decimal
 
-from pydantic import BaseModel, Field
-
-
-# class CommonDataModel(BaseModel):
-#     class Config:
-#         arbitrary_types_allowed = True
-#         extra = "forbid"
-
-#     @classmethod
-#     def get_fields(cls):
-#         return cls.__annotations__.items()
-
-#     @classmethod
-#     def get_request_form(cls):
-#         return {
-#             field: {"name": field_info.alias or field, "dtype": field_info.annotation}
-#             for field, field_info in cls.model_fields.items()
-#         }
+from pydantic import Field
 
 
 class GeneralLedgerDetailModel(CommonDataModel):

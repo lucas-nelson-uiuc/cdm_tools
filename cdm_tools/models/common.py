@@ -56,7 +56,7 @@ class CommonDataModel(BaseModel):
                 data = preprocessing(data)
             return data
 
-        return etl_chain()
+        return etl_chain() # TODO: functools.reduce(DataFrame.unionByName, map(etl_chain, source)); safer way of etl-ing data
 
 
 @define(slots=False)
