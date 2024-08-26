@@ -1,5 +1,6 @@
 from typing import Optional
 import functools
+import re
 
 import attrs
 from attrs import define, field
@@ -14,6 +15,20 @@ from .validate import cdm_validate
 class CommonDataModel(BaseModel):
     class Config:
         arbitrary_types_allowed = True
+
+    @classmethod
+    def get_columns(cls, pattern: str = None, dtype: T.DataType = None) -> list[str]:
+        """Obtain columns by parameters. By default, all columns are returned."""
+        if pattern:
+            pattern = re.compile(pattern)
+            return [field for field in cls.model_fields if pattern.search(field)]
+        if dtype:
+            return [
+                field
+                for field, field_info in cls.model_fields.items()
+                if isinstance(field_info.annotation, dtype)
+            ]
+        return list(cls.model_fields.keys())
 
     @classmethod
     def get_schema(cls):
@@ -56,7 +71,7 @@ class CommonDataModel(BaseModel):
                 data = preprocessing(data)
             return data
 
-        return etl_chain() # TODO: functools.reduce(DataFrame.unionByName, map(etl_chain, source)); safer way of etl-ing data
+        return etl_chain()  # TODO: functools.reduce(DataFrame.unionByName, map(etl_chain, source)); safer way of etl-ing data
 
 
 @define(slots=False)
