@@ -1,4 +1,5 @@
-from typing import Optional
+import typing
+from typing import Optional, Union
 import sys
 import importlib
 import functools
@@ -42,11 +43,12 @@ class CommonDataModel(BaseModel):
         )
 
     @classmethod
-    def get_request_form(cls):
-        return {
-            field: {"name": field_info.alias or field, "dtype": field_info.annotation}
-            for field, field_info in cls.model_fields.items()
-        }
+    def get_required_fields(cls):
+        return [
+            field
+            for field, annotation in typing.get_type_hints(cls).items()
+            if not typing.get_origin(annotation) is Union
+        ]
 
     @classmethod
     def _read(cls, func: callable = None, **kwargs: dict) -> callable:
