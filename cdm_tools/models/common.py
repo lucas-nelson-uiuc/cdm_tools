@@ -53,14 +53,18 @@ class CommonDataModel(BaseModel):
     @classmethod
     def _read(cls, func: callable = None, **kwargs: dict) -> callable:
         if "cortexpy" in sys.modules:
-            cortexpy_module = getattr(importlib.import_module("cortexpy.context.entry_context"), "get_context")
+            cortexpy_module = getattr(
+                importlib.import_module("cortexpy.context.entry_context"), "get_context"
+            )
             func = getattr(cortexpy_module(), "read")
         return functools.partial(func, schema=cls.get_schema(), **kwargs)
 
     @classmethod
     def _write(cls, func: callable = None, **kwargs: dict) -> callable:
         if "cortexpy" in sys.modules:
-            cortexpy_module = getattr(importlib.import_module("cortexpy.context.entry_context"), "get_context")
+            cortexpy_module = getattr(
+                importlib.import_module("cortexpy.context.entry_context"), "get_context"
+            )
             func = getattr(cortexpy_module(), "write")
         return functools.partial(func, schema=cls.get_schema(), **kwargs)
 
@@ -143,6 +147,7 @@ class CommonPipeline:
             if preprocessing:
                 data = preprocessing(data)
             return data
+
         return process(data=data)
 
     def materialize(self) -> "CommonPipeline":
