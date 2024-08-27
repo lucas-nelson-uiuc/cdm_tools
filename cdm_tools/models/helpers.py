@@ -10,7 +10,9 @@ def assert_not_empty(data: DataFrame, model: CommonDataModel) -> bool:
         empty_values = data.filter(F.col(field).isNull() | F.col(field).rlike(r"^\s*$"))
         if not empty_values.isEmpty():
             n_values = empty_values.count()
-            print(f"Missing values detected in {field} ({empty_values.count():,} values, {n_values / n_rows:.1%})")
+            print(
+                f"Missing values detected in {field} ({empty_values.count():,} values, {n_values / n_rows:.1%})"
+            )
         else:
             print(f"All values populated in {field}")
     return data

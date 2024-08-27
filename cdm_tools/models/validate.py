@@ -49,7 +49,10 @@ def cdm_validate(model):
                         field_name = field_info.alias or field
                         field_validators["custom_null"] = operator.sub(
                             data.count(),
-                            data.filter(F.col(field_name).isNull() | F.col(field_name).rlike(r"^\s*$")).count()
+                            data.filter(
+                                F.col(field_name).isNull()
+                                | F.col(field_name).rlike(r"^\s*$")
+                            ).count(),
                         )
 
                 all_fields[field] = field_validators
