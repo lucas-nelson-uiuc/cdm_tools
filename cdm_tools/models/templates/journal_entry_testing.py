@@ -190,9 +190,11 @@ class JournalEntryTestingAnalytic(CommonAnalytic):
         default=GeneralLedgerDetailModel
     )
     trial_balance: TrialBalanceModel = field(default=TrialBalanceModel)
-    general_ledger_detail: ChartOfAccountsModel = field(default=ChartOfAccountsModel)
+    chart_of_accounts: ChartOfAccountsModel = field(default=ChartOfAccountsModel)
 
     def transform_models(self):
+        """Perform generic transformations on models' data"""
+
         columns_to_upper: tuple[str] = ("entity_id", "account_number")
 
         def transform_general_ledger() -> None:
