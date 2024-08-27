@@ -70,7 +70,7 @@ class CommonDataModel(BaseModel):
 
     @classmethod
     def read(
-        cls, source: list[str], preprocessing: Optional[callable] = None
+        cls, source: list[str], preprocessing: Optional[callable] = None, **kwargs: dict
     ) -> DataFrame:
         """Load, transform, validate all soures passed to the model with optional preprocessing function"""
 
@@ -78,7 +78,8 @@ class CommonDataModel(BaseModel):
         @cdm_transform(model=cls)
         def etl_chain() -> DataFrame:
             """Generic read-in function for loading, transforming, and validating data"""
-            data = functools.reduce(DataFrame.unionByName, map(cls._read, source))
+            read_func = cls._read(**kwargs)
+            data = functools.reduce(DataFrame.unionByName, map(read_func, source))
             if preprocessing:
                 data = preprocessing(data)
             return data
