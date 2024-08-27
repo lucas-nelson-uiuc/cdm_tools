@@ -1,4 +1,6 @@
 from typing import Optional
+import sys
+import importlib
 import functools
 import re
 
@@ -47,13 +49,16 @@ class CommonDataModel(BaseModel):
         }
 
     @classmethod
-    @property
-    def _read(cls, func: callable = "cp.read", **kwargs: dict) -> callable:
+    def _read(cls, func: callable = None, **kwargs: dict) -> callable:
+        if "cortexpy" in sys.modules:
+            cortexpy_module = getattr(
+                importlib.import_module("cortexpy.context.entry_context"), "get_context"
+            )
+            func = getattr(cortexpy_module(), "read")
         return functools.partial(func, schema=cls.get_schema(), **kwargs)
 
     @classmethod
-    @property
-    def _write(cls, func: callable = "cp.write", **kwargs: dict) -> callable:
+    def _write(cls, func: callable = None, **kwargs: dict) -> callable:
         return functools.partial(func, schema=cls.get_schema(), **kwargs)
 
     @classmethod
