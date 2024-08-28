@@ -1,13 +1,25 @@
-import datetime
-import decimal
+import typing
 import functools
 
 from pyspark.sql import types as T, functions as F
 
+from .common import CommonDataModel
 from .types import PYDANTIC_TYPES, DATE_FORMATS, TIMESTAMP_FORMATS
 
 
-def cdm_transform(model):
+def extract_field_type(annotation) -> T.DataType:
+    """
+    Convert base Python type to PySpark DataType.
+    If the annotation follows Optional[T], perform preliminary step to
+    parse T prior to mapping.
+    """
+    if typing.get_origin(annotation):
+        annotation = typing.get_args(annotation)[0]
+    return PYDANTIC_TYPES.get(annotation, T.NullType())
+
+
+
+def cdm_transform(model: CommonDataModel):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -17,7 +29,7 @@ def cdm_transform(model):
                 # gather, extract metadata
                 all_transformations[field] = dict()
                 field_name = field_info.alias or field
-                field_type = PYDANTIC_TYPES.get(field_info.annotation, T.NullType())
+                field_type = extract_field_type(annotation=field_info.annotation)
 
                 if field_name in data.columns:
                     # rename columns if alias provided
