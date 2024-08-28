@@ -82,7 +82,7 @@ class CommonDataModel(BaseModel):
         @cdm_transform(model=cls)
         def etl_chain() -> DataFrame:
             """Generic read-in function for loading, transforming, and validating data"""
-            data = functools.reduce(DataFrame.unionByName, map(cls._read(), source))
+            data = functools.reduce(DataFrame.unionByName, map(cls._read, source))
             if preprocessing:
                 data = preprocessing(data)
             return data
