@@ -18,7 +18,6 @@ def extract_field_type(annotation) -> T.DataType:
     return PYDANTIC_TYPES.get(annotation, T.NullType())
 
 
-
 def cdm_transform(model: CommonDataModel):
     def decorator(func):
         @functools.wraps(func)

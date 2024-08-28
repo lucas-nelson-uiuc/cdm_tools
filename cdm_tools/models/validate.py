@@ -20,7 +20,7 @@ def cdm_validate(model: CommonDataModel):
                 if field in required_fields:
                     field_validators["required"] = operator.and_(
                         F.column(field).isNotNull(),
-                        operator.inv(F.column(field).rlike("^\s*$"))
+                        operator.inv(F.column(field).rlike("^\s*$")),
                     )
 
                 if field_info.metadata:
