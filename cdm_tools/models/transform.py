@@ -3,7 +3,6 @@ import functools
 
 from pyspark.sql import types as T, functions as F
 
-from .common import CommonDataModel
 from .types import PYDANTIC_TYPES, DATE_FORMATS, TIMESTAMP_FORMATS
 
 
@@ -18,7 +17,7 @@ def extract_field_type(annotation) -> T.DataType:
     return PYDANTIC_TYPES.get(annotation, T.NullType())
 
 
-def cdm_transform(model: CommonDataModel):
+def cdm_transform(model):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

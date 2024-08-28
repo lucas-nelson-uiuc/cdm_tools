@@ -3,10 +3,8 @@ import operator
 
 from pyspark.sql import functions as F
 
-from .common import CommonDataModel
 
-
-def cdm_validate(model: CommonDataModel):
+def cdm_validate(model):
     def decorator(func: callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
