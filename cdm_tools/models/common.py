@@ -61,7 +61,7 @@ class CommonDataModel(BaseModel):
         if module.split(".")[0] in sys.modules:
             loaded_module = getattr(importlib.import_module(module), submodule)
             func = getattr(loaded_module(), "read")
-        return functools.partial(func, schema=cls.get_schema(), **kwargs)
+        return functools.partial(func, schema=cls.get_schema(), header=True, **kwargs)
 
     @classmethod
     def _write(cls, func: callable = None, **kwargs: dict) -> callable:
@@ -82,7 +82,7 @@ class CommonDataModel(BaseModel):
         @cdm_transform(model=cls)
         def etl_chain() -> DataFrame:
             """Generic read-in function for loading, transforming, and validating data"""
-            data = functools.reduce(DataFrame.unionByName, map(cls._read, source))
+            data = functools.reduce(DataFrame.unionByName, map(cls._read(), source))
             if preprocessing:
                 data = preprocessing(data)
             return data
