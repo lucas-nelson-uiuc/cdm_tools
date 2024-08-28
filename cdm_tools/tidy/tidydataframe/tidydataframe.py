@@ -255,131 +255,93 @@ class TidyDataFrame:
         self._data = self._data.distinct()
         return self
 
-    ### COLUMN SELECTING OPERATIONS
-    @_tdf_controller(message="selected {self._n_cols} columns")
-    def select(self, *cols, disable_message: bool = False):
-        self._data = self._data.select(*cols)
-        return self
+    # ### COLUMN SELECTING OPERATIONS
+    # @_tdf_controller(message="selected {self._n_cols} columns")
+    # def select(self, *cols, disable_message: bool = False):
+    #     self._data = self._data.select(*cols)
+    #     return self
 
-    def drop(self, cols, disable_message: bool = False):
-        all_cols = self._data.columns
-        drop_cols = set(all_cols).difference(set(cols))
-        return self.select(*drop_cols)
+    # def drop(self, cols, disable_message: bool = False):
+    #     all_cols = self._data.columns
+    #     drop_cols = set(all_cols).difference(set(cols))
+    #     return self.select(*drop_cols)
 
-    ### JOIN OPERATIONS
-    @_tdf_controller(
-        message="appended {(self.count() - self.count(result)) * -1:,} rows, remaining {self.count():,} rows"
-    )
-    def union(self, other, disable_message: bool = False):
-        self._data = self._data.union(other)
-        return self
+    # ### JOIN OPERATIONS
+    # @_tdf_controller(
+    #     message="appended {(self.count() - self.count(result)) * -1:,} rows, remaining {self.count():,} rows"
+    # )
+    # def union(self, other, disable_message: bool = False):
+    #     self._data = self._data.union(other)
+    #     return self
 
-    def unionAll(self, other, disable_message: bool = False):
-        return self.union(other)
-
-    @_tdf_controller(
-        message="appended {(self.count() - self.count(result)) * -1:,} rows, remaining {self.count():,} rows"
-    )
-    def unionByName(
-        self, other, allowMissingColumns=False, disable_message: bool = False
-    ):
-        self._data = self._data.unionByName(
-            other, allowMissingColumns=allowMissingColumns
-        )
-        return self
-
-    @_tdf_controller(
-        message='{kwargs.get("how")}-join on {kwargs.get("on")}, remaining {self.count(result):,} rows'
-    )
-    def join(self, other, on=None, how=None, disable_message: bool = False):
-        self._data = self._data.join(other=other, on=on, how=how)
-        return self
-
-    ### COLUMN EDITING OPERATIONS
-    @_tdf_controller(  # use of single apostrophes is intentional
-        message='created `{args[0] if args else kwargs.get("colName")}` (< type >)',
-        alias="mutate",
-    )
-    def withColumn(self, colName, col, disable_message: bool = False):
-        self._data = self._data.withColumn(colName=colName, col=col)
-        return self
-
-    @_tdf_controller(
-        message="creating multiple columns",
-        alias="rename",
-    )
-    def withColumns(self, *colsMap, disable_message: bool = False):
-        self._data = self._data.withColumns(*colsMap)
-        return self
-
-    @_tdf_controller(  # use of single apostrophes is intentional
-        message='column `{args[0] if args else kwargs.get("existing")}` renamed to `{args[1] if args else kwargs.get("new")}`',
-        alias="rename",
-    )
-    def withColumnRenamed(self, existing, new, disable_message: bool = False):
-        self._data = self._data.withColumnRenamed(existing=existing, new=new)
-        return self
-
-    ### TidyDataFrame methods
-    @_tdf_controller(
-        message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
-    )
-    def tdf_filter_nulls(
-        self, columns: Union[str, list[str]] = None, strict: bool = False
-    ):
-        """Shortcut function for filtering null values"""
-        ### coerce columns to list of strings
-        if columns is None:
-            columns = self._data.columns
-        if not isinstance(columns, list):
-            if isinstance(columns, str):
-                columns = [columns]
-        ### enforce strict is boolean value
-        if not isinstance(strict, bool):
-            raise ValueError("strict must be boolean value!")
-        comp_op = operator.and_ if strict else operator.or_
-        ### construct query per column, append together into one condition
-        query_list = [col(key).isNull() | col(key).rlike("^\s*$") for key in columns]
-        query_expression = functools.reduce(lambda x, y: comp_op(x, y), query_list)
-        return self.filter(condition=~query_expression)
+    # def unionAll(self, other, disable_message: bool = False):
+    #     return self.union(other)
 
     # @_tdf_controller(
-    #     message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
+    #     message="appended {(self.count() - self.count(result)) * -1:,} rows, remaining {self.count():,} rows"
     # )
-    # def tdf_cast(self, columns: list[str], dtype: str = "string"):
-    #     dtype = dtype.strip().lower()
-    #     # self._validate_dtype(dtype=dtype, category='all')
-    #     if dtype == "string":
-    #         self._data = self.tdf_cast_string(columns=columns)
-    #     if dtype == "decimal":
-    #         self._data = self.tdf_cast_numeric(columns=columns)
-    #     if dtype == "date":
-    #         self._data = self.tdf_cast_date(columns=columns)
-    #     return self
-
-    # def tdf_cast_string(self, columns: list[str], dtype="string"):
-    #     self._validate_dtype(dtype=dtype, category='all')
-    #     self._data = self._data.withColumns({key: F.col(key).cast(dtype) for key in columns})
-    #     return self
-
-    # def tdf_cast_numeric(self, columns: list[str], dtype="decimal"):
-    #     RE_VALUES = "([\(-\d\.]+)"
-    #     # NUMERIC_DTYPES = ['decimal', 'integer', 'float']
-    #     # if dtype not in NUMERIC_DTYPES:
-    #     #     raise ValueError(f"`dtype` "{dtype}" is invalid - must be one of {', '.join(NUMERIC_DTYPES)}")
-    #     # self._validate_dtype(dtype=dtype, category='numeric')
-    #     self._data = (
-    #         self._data
-    #         .withColumns({key: F.regexp_replace(str=F.col(key), pattern='(', replacement='-') for key in columns})
-    #         .withColumns({key: F.regexp_extract(str=F.col(key), pattern=RE_VALUES, idx=0) for key in columns})
-    #         .withColumns({key: F.col(key).cast(dtype) for key in columns})
+    # def unionByName(
+    #     self, other, allowMissingColumns=False, disable_message: bool = False
+    # ):
+    #     self._data = self._data.unionByName(
+    #         other, allowMissingColumns=allowMissingColumns
     #     )
     #     return self
 
-    # def tdf_cast_date(self, columns: list[str], dtype="date"):
-    #     # self._validate_dtype(dtype=dtype, category='date')
-    #     self._data = self._data.withColumns({key: F.col(key).cast(dtype) for key in columns})
+    # @_tdf_controller(
+    #     message='{kwargs.get("how")}-join on {kwargs.get("on")}, remaining {self.count(result):,} rows'
+    # )
+    # def join(self, other, on=None, how=None, disable_message: bool = False):
+    #     self._data = self._data.join(other=other, on=on, how=how)
     #     return self
+
+    # ### COLUMN EDITING OPERATIONS
+    # @_tdf_controller(  # use of single apostrophes is intentional
+    #     message='created `{args[0] if args else kwargs.get("colName")}` (< type >)',
+    #     alias="mutate",
+    # )
+    # def withColumn(self, colName, col, disable_message: bool = False):
+    #     self._data = self._data.withColumn(colName=colName, col=col)
+    #     return self
+
+    # @_tdf_controller(
+    #     message="creating multiple columns",
+    #     alias="rename",
+    # )
+    # def withColumns(self, *colsMap, disable_message: bool = False):
+    #     self._data = self._data.withColumns(*colsMap)
+    #     return self
+
+    # @_tdf_controller(  # use of single apostrophes is intentional
+    #     message='column `{args[0] if args else kwargs.get("existing")}` renamed to `{args[1] if args else kwargs.get("new")}`',
+    #     alias="rename",
+    # )
+    # def withColumnRenamed(self, existing, new, disable_message: bool = False):
+    #     self._data = self._data.withColumnRenamed(existing=existing, new=new)
+    #     return self
+
+    # ### TidyDataFrame methods
+    # @_tdf_controller(
+    #     message='cast {args[0] if args else kwargs.get("columns")} to {args[1] if args else kwargs.get("dtype")}'
+    # )
+    # def tdf_filter_nulls(
+    #     self, columns: Union[str, list[str]] = None, strict: bool = False
+    # ):
+    #     """Shortcut function for filtering null values"""
+    #     ### coerce columns to list of strings
+    #     if columns is None:
+    #         columns = self._data.columns
+    #     if not isinstance(columns, list):
+    #         if isinstance(columns, str):
+    #             columns = [columns]
+    #     ### enforce strict is boolean value
+    #     if not isinstance(strict, bool):
+    #         raise ValueError("strict must be boolean value!")
+    #     comp_op = operator.and_ if strict else operator.or_
+    #     ### construct query per column, append together into one condition
+    #     query_list = [col(key).isNull() | col(key).rlike("^\s*$") for key in columns]
+    #     query_expression = functools.reduce(lambda x, y: comp_op(x, y), query_list)
+    #     return self.filter(condition=~query_expression)
 
     def __getattr__(self, attr):
         """
