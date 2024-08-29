@@ -10,16 +10,16 @@ def cdm_validate(model):
         def wrapper(*args, **kwargs):
             data = func(*args, **kwargs)
             all_fields = dict()
-            required_fields = model.get_required_fields()
+            # required_fields = model.get_required_fields()
             for field, field_info in model.model_fields.items():
                 # collect all validations performed on a field
                 field_validators = dict()
 
-                if field in required_fields:
-                    field_validators["required"] = operator.and_(
-                        F.column(field).isNotNull(),
-                        operator.inv(F.column(field).rlike("^\s*$")),
-                    )
+                # if field in required_fields:
+                #     field_validators["required"] = operator.and_(
+                #         F.column(field).isNotNull(),
+                #         operator.inv(F.column(field).rlike("^\s*$")),
+                #     )
 
                 if field_info.metadata:
                     for operation in field_info.metadata:
