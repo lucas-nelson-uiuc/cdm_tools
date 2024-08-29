@@ -1,6 +1,7 @@
 from typing import Optional
 import datetime
 
+from pyspark.sql import functions as F
 from pydantic import Field
 
 from ...common import CommonDataModel
@@ -34,10 +35,20 @@ class ChartOfAccountsModel(CommonDataModel):
     )
     financial_statement_category_id: Optional[str]
     financial_statement_subtotal_category: str = Field(
+        default_factory=lambda x: (
+            F.when(F.col('financial_statement_category').isin(["Equity", "Revenue", "Expenses"]), F.lit("Equity"))
+            .otherwise(F.lit(F.col("financial_statement_category")))
+        ),
         pattern="(Assets|Liabilities|Equity)"
     )
     financial_statement_subtotal_category_id: Optional[str]
-    financial_statement_type: str = Field(pattern="(Balance Sheet|Income Statement)")
+    financial_statement_type: str = Field(
+        default_factory=lambda x: (
+            F.when(F.col('financial_statement_category').isin(["Revenue", "Expenses"]), F.lit("Income Statement"))
+            .otherwise(F.lit("Balance Sheet"))
+        ),
+        pattern="(Balance Sheet|Income Statement)"
+    )
     account_grouping_1: str
     account_grouping_1_num: str
     abcotd: str
@@ -54,4 +65,8 @@ class OmniaAccountGroupingModel(CommonDataModel):
 
 
 class OmniaFinancialStatementLineModel(CommonDataModel):
-    pass
+    financial_statement_line_num: str
+    financial_statement_line: str
+    financial_statement_subtotal_category: str
+    financial_statement_category: str
+    financial_statement_type: str
