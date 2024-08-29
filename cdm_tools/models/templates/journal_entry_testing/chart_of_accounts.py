@@ -44,3 +44,14 @@ class ChartOfAccountsModel(CommonDataModel):
     abcotd_id: Optional[str]
     abcotd_significance: Optional[str]
     coa_account_key: Optional[str]
+
+
+class OmniaAccountGroupingModel(CommonDataModel):
+    account_grouping_1_num: str
+    account_grouping_1: str
+    financial_statement_line_num: str
+    financial_statement_line: str
+
+
+class OmniaFinancialStatementLineModel(CommonDataModel):
+    pass

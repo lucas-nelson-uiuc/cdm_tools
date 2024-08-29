@@ -56,12 +56,13 @@ class CommonDataModel(BaseModel):
         func: callable = None,
         module: str = "cortexpy.context.entry_context",
         submodule: str = "get_context",
+        *args: tuple,
         **kwargs: dict,
     ) -> callable:
         if module.split(".")[0] in sys.modules:
             loaded_module = getattr(importlib.import_module(module), submodule)
             func = getattr(loaded_module(), "read")
-        return functools.partial(func, schema=cls.get_schema(), header=True, **kwargs)
+        return functools.partial(func, schema=cls.get_schema(), *args, **kwargs)
 
     @classmethod
     def _write(cls, func: callable = None, **kwargs: dict) -> callable:
@@ -74,7 +75,7 @@ class CommonDataModel(BaseModel):
 
     @classmethod
     def read(
-        cls, source: list[str], preprocessing: Optional[callable] = None
+        cls, source: list[str], preprocessing: Optional[callable] = None, *args: tuple, **kwargs: dict
     ) -> DataFrame:
         """Load, transform, validate all soures passed to the model with optional preprocessing function"""
 
@@ -82,7 +83,8 @@ class CommonDataModel(BaseModel):
         @cdm_transform(model=cls)
         def etl_chain() -> DataFrame:
             """Generic read-in function for loading, transforming, and validating data"""
-            data = functools.reduce(DataFrame.unionByName, map(cls._read(), source))
+            read_func = cls._read(*args, **kwargs)
+            data = functools.reduce(DataFrame.unionByName, map(read_func, source))
             if preprocessing:
                 data = preprocessing(data)
             return data
