@@ -255,11 +255,11 @@ class TidyDataFrame:
         self._data = self._data.distinct()
         return self
 
-    # ### COLUMN SELECTING OPERATIONS
-    # @_tdf_controller(message="selected {self._n_cols} columns")
-    # def select(self, *cols, disable_message: bool = False):
-    #     self._data = self._data.select(*cols)
-    #     return self
+    ### COLUMN SELECTING OPERATIONS
+    @_tdf_controller(message="selected {self._n_cols} columns")
+    def select(self, *cols, disable_message: bool = False):
+        self._data = self._data.select(*cols)
+        return self
 
     # def drop(self, cols, disable_message: bool = False):
     #     all_cols = self._data.columns
@@ -367,9 +367,9 @@ class TidyDataFrame:
                 result = getattr(self._data, attr)(*args, **kwargs)
                 if isinstance(result, pyspark.sql.DataFrame):
                     self._data = result
-                    self._log_operation(
-                        operation=attr, message="not yet implemented", level="warning"
-                    )
+                    # self._log_operation(
+                    #     operation=attr, message="not yet implemented", level="warning"
+                    # )
                     return self
                 else:
                     return self
