@@ -5,14 +5,21 @@ from pyspark.sql import functions as F
 
 
 def cdm_validate(model):
-    def decorator(func):
+    def decorator(func: callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             data = func(*args, **kwargs)
             all_fields = dict()
+            # required_fields = model.get_required_fields()
             for field, field_info in model.model_fields.items():
                 # collect all validations performed on a field
                 field_validators = dict()
+
+                # if field in required_fields:
+                #     field_validators["required"] = operator.and_(
+                #         F.column(field).isNotNull(),
+                #         operator.inv(F.column(field).rlike("^\s*$")),
+                #     )
 
                 if field_info.metadata:
                     for operation in field_info.metadata:
@@ -44,6 +51,15 @@ def cdm_validate(model):
                         field_validators["custom_distinct"] = operator.sub(
                             data.count(),
                             data.drop_duplicates(subset=[field_name]).count(),
+                        )
+                    if field_info.json_schema_extra.get("null"):
+                        field_name = field_info.alias or field
+                        field_validators["custom_null"] = operator.sub(
+                            data.count(),
+                            data.filter(
+                                F.col(field_name).isNull()
+                                | F.col(field_name).rlike(r"^\s*$")
+                            ).count(),
                         )
 
                 all_fields[field] = field_validators
